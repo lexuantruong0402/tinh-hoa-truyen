@@ -1,65 +1,33 @@
 # ---- Build Stage ----
 FROM node:22-alpine AS builder
-
-ARG GEMINI_API_KEY
-
 WORKDIR /app
-
-# Copy package files first for better layer caching
-COPY package.json package-lock.json ./
+COPY package*.json ./
 RUN npm ci
-
-# Copy source code
 COPY . .
-
-# Write API key to .env so Vite's loadEnv can pick it up during build
-RUN echo "GEMINI_API_KEY=$GEMINI_API_KEY" > .env
-
-# Build the frontend
+# Lưu ý: Vite cần các biến bắt đầu bằng VITE_ để load ở client-side. 
+# Nếu API key dùng ở server, không cần bước này.
 RUN npm run build
 
 # ---- Production Stage ----
 FROM node:22-alpine AS runner
-
-# Cloud Run metadata labels
-LABEL maintainer="tinh-hoa-truyen"
-LABEL description="Tinh Hoa Truyen - Story scraping & reading web app"
-LABEL version="1.0.0"
-
-# Install tini for proper signal handling (Cloud Run best practice)
 RUN apk add --no-cache tini
-
 WORKDIR /app
-
-# Copy production dependencies only
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
-
-# Copy built frontend from builder stage
+COPY package*.json ./
+# Cài đặt production dependencies
+RUN npm ci --omit=dev
+# Copy kết quả build từ stage trước
 COPY --from=builder /app/dist ./dist
-
-# Copy server and runtime source files
+# Copy các file cần thiết để chạy server (server.ts, v.v.)
 COPY --from=builder /app/server.ts ./server.ts
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/src ./src
 
-# Accept and pass GEMINI_API_KEY at runtime
-ARG GEMINI_API_KEY
-ENV GEMINI_API_KEY=$GEMINI_API_KEY
+# Không cần ENV GEMINI_API_KEY ở đây! 
+# Bạn sẽ cấp nó qua Cloud Run Console (Secret Manager) như đã làm.
 
-# Create a non-root user for security
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
-
+USER node
 EXPOSE 8080
 
-ENV NODE_ENV=production \
-    PORT=8080
-
-# Health check for Cloud Run
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/scrape?url=check || exit 1
-
-# Use tini as init for proper signal forwarding
+ENV NODE_ENV=production PORT=8080
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["npx", "tsx", "server.ts"]
