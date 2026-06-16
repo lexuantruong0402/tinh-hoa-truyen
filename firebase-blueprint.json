@@ -1,0 +1,25 @@
+{
+  "entities": {
+    "ReadingHistory": {
+      "title": "Reading History",
+      "description": "Information about a user's reading history for a story.",
+      "type": "object",
+      "properties": {
+        "storyName": { "type": "string", "description": "Name of the story/book" },
+        "chapterName": { "type": "string", "description": "Current chapter name or number" },
+        "url": { "type": "string", "description": "Last read chapter URL" },
+        "sourceHost": { "type": "string", "description": "Source website hostname (e.g. truyenfull.vn)" },
+        "userId": { "type": "string", "description": "UID of the user reading" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp when history was first created" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update" }
+      },
+      "required": ["storyName", "chapterName", "url", "sourceHost", "userId"]
+    }
+  },
+  "firestore": {
+    "reading_history/{historyId}": {
+      "schema": "ReadingHistory",
+      "description": "Collection of reading history items per story per user"
+    }
+  }
+}
