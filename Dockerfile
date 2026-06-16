@@ -1,6 +1,8 @@
 # ---- Build Stage ----
 FROM node:22-alpine AS builder
 
+ARG GEMINI_API_KEY
+
 WORKDIR /app
 
 # Copy package files first for better layer caching
@@ -9,6 +11,9 @@ RUN npm ci
 
 # Copy source code
 COPY . .
+
+# Write API key to .env so Vite's loadEnv can pick it up during build
+RUN echo "GEMINI_API_KEY=$GEMINI_API_KEY" > .env
 
 # Build the frontend
 RUN npm run build
@@ -37,6 +42,10 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server.ts ./server.ts
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/src ./src
+
+# Accept and pass GEMINI_API_KEY at runtime
+ARG GEMINI_API_KEY
+ENV GEMINI_API_KEY=$GEMINI_API_KEY
 
 # Create a non-root user for security
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
