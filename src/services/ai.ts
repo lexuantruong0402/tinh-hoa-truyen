@@ -1,36 +1,85 @@
-import { GoogleGenAI } from "@google/genai";
+/**
+ * AI service - calls the backend /api/refine endpoint (server-side Gemini, API key safe).
+ * No direct Gemini API call happens in the browser.
+ */
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
-
-export async function refineStoryContent(storyContent: string, onChunk: (text: string) => void): Promise<string> {
-  const prompt = `
-    Bạn là một biên tập viên văn học mạng chuyên nghiệp, tinh thông hán việt và văn phong tiên hiệp, kiếm hiệp.
-    Dưới đây là một chương truyện đã được dịch thô (convert) từ tiếng Trung sang tiếng Việt. 
-    Nhiệm vụ của bạn là biên tập lại toàn bộ nội dung này sang tiếng Việt mượt mà, tự nhiên, thoát ý và thuần Việt hơn, nhưng vẫn giữ được "phong vị" của truyện mạng.
-    
-    Yêu cầu BẮT BUỘC:
-    1. Giữ nguyên ý nghĩa gốc và logic của câu chuyện.
-    2. TUYÊT ĐỐI KHÔNG tóm tắt. Dịch đầy đủ từng chi tiết, không bỏ sót từ nào.
-    3. Sử dụng từ hán việt phù hợp cho bối cảnh cổ đại/tiên hiệp. Văn phong phải trang trọng hoặc hào sảng tùy tình tiết.
-    4. Sửa triệt để các lỗi ngữ pháp "convert" (ví dụ: dùng sai từ nối, cấu trúc câu bị ngược, lặp từ vô nghĩa).
-    5. Giữ nguyên định dạng đoạn văn ban đầu.
-    6. ĐẠI TỪ NHÂN XƯNG (CỰC KỲ QUAN TRỌNG): 
-       - Bạn PHẢI GIỮ NGUYÊN các đại từ nhân xưng xưng hô kiểu Hán Việt như: ta, ngươi, hắn, nàng, lão già, tiểu tử, vị này, huynh đệ, sư phụ, đồ nhi, lão tổ, bản tôn, thiếp thân, chư vị, v.v.
-       - Tuyệt đối KHÔNG được hiện đại hóa chúng thành: tôi, bạn, anh, em, cô ấy, cậu ấy, nó. 
-       - Việc thay đổi các đại từ này sẽ làm hỏng bối cảnh truyện. Hãy để chúng tự nhiên trong câu văn Việt.
-
-    Nội dung chương cần biên tập:
-    ${storyContent.substring(0, 30000)}
-  `;
-
-  const response = await ai.models.generateContentStream({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
+export async function refineStoryContent(
+  storyContent: string,
+  onChunk: (text: string) => void
+): Promise<string> {
+  
+  const response = await fetch("/api/refine", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: storyContent }),
   });
 
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error || `Server error: ${response.status}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("Response body is not readable");
+
+  const decoder = new TextDecoder();
+  let buffer = "";
   let fullText = "";
-  for await (const chunk of response) {
-    fullText += chunk.text;
+
+  // Throttle onChunk with requestAnimationFrame to avoid excessive React re-renders
+  let scheduled = false;
+  let latestText = "";
+
+  const scheduleUpdate = () => {
+    if (!scheduled) {
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        onChunk(latestText);
+      });
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || ""; // keep incomplete line in buffer
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data: ")) continue;
+
+      try {
+        const data = JSON.parse(trimmed.slice(6));
+        if (data.error) throw new Error(data.error);
+        if (data.done) {
+          // Flush any pending update before returning
+          if (scheduled) {
+            cancelAnimationFrame(requestAnimationFrame(() => {}));
+            onChunk(fullText);
+          }
+          onChunk(fullText);
+          return fullText;
+        }
+        if (data.text) {
+          fullText += data.text;
+          latestText = fullText;
+          scheduleUpdate();
+        }
+      } catch (e: any) {
+        // If parsing failed and it's not our error, rethrow
+        if (e.message && e.message !== "Unexpected end of JSON input") {
+          throw e;
+        }
+      }
+    }
+  }
+
+  // Flush final text
+  if (latestText !== fullText) {
     onChunk(fullText);
   }
 

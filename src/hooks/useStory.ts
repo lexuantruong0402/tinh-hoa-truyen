@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Story, ParsedReadingInfo } from "@/src/types";
 import { refineStoryContent } from "@/src/services/ai";
+import { detectChapterInfo, DetectedChapterInfo } from "@/src/services/detectChapter";
 
 interface ParseReadingInfoResult {
   storyName: string;
@@ -21,7 +22,10 @@ export function useStory() {
   const [autoRefine, setAutoRefine] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [detectedInfo, setDetectedInfo] = useState<DetectedChapterInfo | null>(null);
   const readerScrollRef = useRef<HTMLDivElement>(null);
+
+  const MAX_CONTENT_LENGTH = 15000;
 
   const parseReadingInfo = useCallback((urlStr: string, titleStr: string): ParseReadingInfoResult => {
     let storyName = "";
@@ -115,7 +119,21 @@ export function useStory() {
       const res = await fetch(`/api/scrape?url=${encodeURIComponent(targetUrl)}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
+      if (data.content && data.content.length > MAX_CONTENT_LENGTH) {
+        alert(`Nội dung truyện quá dài (${data.content.length} ký tự). Vui lòng chọn chương có nội dung dưới 15,000 ký tự.`);
+        setError(`Nội dung quá dài (${data.content.length}/${MAX_CONTENT_LENGTH} ký tự).`);
+        setStory(null);
+        return null;
+      }
       setStory(data);
+      // After scraping, call AI to detect story/chapter info (fire-and-forget style)
+      detectChapterInfo(data.content, data.title, targetUrl)
+        .then((info) => {
+          setDetectedInfo(info);
+        })
+        .catch((err) => {
+          console.error("Detect chapter error:", err);
+        });
       return data;
     } catch (err: any) {
       setError(err.message || "Lỗi không xác định khi tải truyện.");
@@ -128,6 +146,11 @@ export function useStory() {
   const handleManualSubmit = useCallback(() => {
     if (!manualContent.trim()) {
       setError("Vui lòng dán nội dung truyện.");
+      return;
+    }
+    if (manualContent.trim().length > MAX_CONTENT_LENGTH) {
+      alert(`Nội dung truyện quá dài (${manualContent.trim().length} ký tự). Vui lòng giới hạn dưới 15,000 ký tự.`);
+      setError(`Nội dung quá dài (${manualContent.trim().length}/${MAX_CONTENT_LENGTH} ký tự).`);
       return;
     }
     const finalTitle = manualTitle.trim() || "Chương không tên";
@@ -205,6 +228,8 @@ export function useStory() {
     copyToClipboard,
     currentStoryInfo,
     parseReadingInfo,
+    detectedInfo,
+    setDetectedInfo,
     readerScrollRef,
   };
 }

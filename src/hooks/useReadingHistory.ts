@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { ReadingHistory } from "@/src/types";
 import { fetchReadingHistory, saveReadingHistoryRecord, deleteReadingHistoryItem } from "@/src/services/firestore";
+import { DetectedChapterInfo } from "@/src/services/detectChapter";
 
 export function useReadingHistory(userId: string | null, parseReadingInfoFn: (url: string, title: string) => any) {
   const [readingHistoryList, setReadingHistoryList] = useState<ReadingHistory[]>([]);
@@ -21,9 +22,9 @@ export function useReadingHistory(userId: string | null, parseReadingInfoFn: (ur
   }, [loadHistory]);
 
   const saveHistory = useCallback(
-    async (storyTitle: string, currentUrl: string) => {
+    async (storyTitle: string, currentUrl: string, detectedInfo?: DetectedChapterInfo | null) => {
       if (!userId) return;
-      await saveReadingHistoryRecord(storyTitle, currentUrl, userId, parseReadingInfoFn);
+      await saveReadingHistoryRecord(storyTitle, currentUrl, userId, parseReadingInfoFn, detectedInfo);
       loadHistory();
     },
     [userId, parseReadingInfoFn, loadHistory],

@@ -25,6 +25,7 @@ export default function App() {
     fetchStory, handleManualSubmit, refineWithAI, copyToClipboard,
     currentStoryInfo, parseReadingInfo, readerScrollRef,
     autoRefine, setAutoRefine,
+    detectedInfo,
   } = useStory();
   const { readingHistoryList, confirmDeleteId, setConfirmDeleteId, view, setView, saveReadingHistory, deleteItem } =
     useReadingHistory(user?.uid ?? null, parseReadingInfo);
@@ -41,9 +42,10 @@ export default function App() {
   // Save to reading history when story is loaded and user is logged in
   useEffect(() => {
     if (story && user) {
-      saveReadingHistory(story.title, story.rawUrl || url);
+      // Use detectedInfo if available (AI-detected data), pass null initially so it falls back to regex
+      saveReadingHistory(story.title, story.rawUrl || url, detectedInfo);
     }
-  }, [story?.rawUrl]); // only trigger when story URL changes
+  }, [story?.rawUrl, detectedInfo]); // re-save when detectedInfo updates
 
   const handleHomeClick = () => {
     setStory(null);

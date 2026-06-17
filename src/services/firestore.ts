@@ -66,10 +66,30 @@ export async function saveReadingHistoryRecord(
   currentUrl: string,
   userId: string,
   parseReadingInfoFn: (url: string, title: string) => { storyName: string; chapterName: string; sourceHost: string },
+  detectedInfo?: { storyName?: string; chapterNumber?: string; chapterName?: string } | null,
 ) {
   if (!storyTitle || !currentUrl) return;
 
-  const { storyName, chapterName, sourceHost } = parseReadingInfoFn(currentUrl, storyTitle);
+  const parsed = parseReadingInfoFn(currentUrl, storyTitle);
+
+  // Prefer AI-detected info over regex-parsed info
+  const storyName = (detectedInfo?.storyName && detectedInfo.storyName !== "Không rõ")
+    ? detectedInfo.storyName
+    : parsed.storyName;
+  const sourceHost = parsed.sourceHost;
+
+  // Build chapterName: prefer detected format "Chương X - Tên chương" if available
+  let chapterName = parsed.chapterName;
+  if (detectedInfo?.chapterNumber || detectedInfo?.chapterName) {
+    const parts: string[] = [];
+    if (detectedInfo.chapterNumber) {
+      parts.push(`Chương ${detectedInfo.chapterNumber}`);
+    }
+    if (detectedInfo.chapterName) {
+      parts.push(detectedInfo.chapterName);
+    }
+    chapterName = parts.join(" - ");
+  }
 
   const storySlug = storyName
     .toLowerCase()

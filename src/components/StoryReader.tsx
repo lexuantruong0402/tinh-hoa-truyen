@@ -1,5 +1,6 @@
+import { useMemo } from "react";
 import { cn } from "@/src/lib/utils";
-import { BookOpen, Bookmark, Check, Loader2 } from "lucide-react";
+import { BookOpen, Bookmark, Check } from "lucide-react";
 import { Theme, FontType, Story, ParsedReadingInfo } from "@/src/types";
 
 interface StoryReaderProps {
@@ -18,6 +19,22 @@ interface StoryReaderProps {
   onFetchChapter: (url: string) => void;
 }
 
+/** Memoized paragraph list - only recomputes when content changes */
+function Paragraphs({ content, theme }: { content: string; theme: Theme }) {
+  const lines = useMemo(() => {
+    return content
+      .split("\n")
+      .filter(Boolean)
+      .map((line, i) => (
+        <p key={i} className="mb-6">
+          {line.startsWith(" ") ? line : line}
+        </p>
+      ));
+  }, [content]);
+
+  return <>{lines}</>;
+}
+
 export default function StoryReader({
   story,
   theme,
@@ -33,6 +50,8 @@ export default function StoryReader({
   onCopy,
   onFetchChapter,
 }: StoryReaderProps) {
+  const displayContent = showRefined ? refinedContent : story.content;
+
   return (
       <div
         id="story-reader"
@@ -90,16 +109,7 @@ export default function StoryReader({
         )}
         style={{ fontSize: `${Math.max(14, Math.min(fontSize, 24))}px` }}
       >
-        {(showRefined ? refinedContent : story.content)
-          .split("\n")
-          .map(
-            (line, i) =>
-              line.trim() && (
-                <p key={i} className="mb-6">
-                  {line.trim()}
-                </p>
-              ),
-          )}
+        <Paragraphs content={displayContent} theme={theme} />
 
         {isRefining && showRefined && (
           <div id="ai-loading-indicator" className="animate-pulse space-y-4">
