@@ -5,7 +5,7 @@ import { scrapeChapter } from "./src/services/scraper.js";
 
 async function startServer() {
   const app = express();
-  const PORT = parseInt(process.env.PORT || "3000", 10);
+  const PORT = parseInt(process.env.PORT || "8080", 10);
 
   app.use(express.json());
 
