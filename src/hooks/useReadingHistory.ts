@@ -3,7 +3,7 @@ import { ReadingHistory } from "@/src/types";
 import { fetchReadingHistory, saveReadingHistoryRecord, deleteReadingHistoryItem } from "@/src/services/firestore";
 import { DetectedChapterInfo } from "@/src/services/detectChapter";
 
-export function useReadingHistory(userId: string | null, parseReadingInfoFn: (url: string, title: string) => any) {
+export function useReadingHistory(userId: string | null) {
   const [readingHistoryList, setReadingHistoryList] = useState<ReadingHistory[]>([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [view, setView] = useState<"home" | "history">("home");
@@ -24,10 +24,10 @@ export function useReadingHistory(userId: string | null, parseReadingInfoFn: (ur
   const saveHistory = useCallback(
     async (storyTitle: string, currentUrl: string, detectedInfo?: DetectedChapterInfo | null) => {
       if (!userId) return;
-      await saveReadingHistoryRecord(storyTitle, currentUrl, userId, parseReadingInfoFn, detectedInfo);
+      await saveReadingHistoryRecord(storyTitle, currentUrl, userId, detectedInfo);
       loadHistory();
     },
-    [userId, parseReadingInfoFn, loadHistory],
+    [userId, loadHistory],
   );
 
   const deleteItem = useCallback(async (id: string) => {

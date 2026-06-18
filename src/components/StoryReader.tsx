@@ -17,6 +17,7 @@ interface StoryReaderProps {
   loading: boolean;
   onCopy: () => void;
   onFetchChapter: (url: string) => void;
+  aiMode?: "smooth" | "summarize";
 }
 
 /** Memoized paragraph list - only recomputes when content changes */
@@ -49,6 +50,7 @@ export default function StoryReader({
   loading,
   onCopy,
   onFetchChapter,
+  aiMode,
 }: StoryReaderProps) {
   const displayContent = showRefined ? refinedContent : story.content;
 
@@ -83,7 +85,9 @@ export default function StoryReader({
               <BookOpen size={14} /> AI Biên tập
             </span>
             <span className="flex items-center gap-1 opacity-60">
-              {showRefined ? "Bản mượt mà" : "Bản dịch thô"}
+              {showRefined
+                ? (aiMode === "summarize" ? "Bản tóm tắt" : "Bản mượt mà")
+                : "Bản dịch thô"}
             </span>
             <div className="flex gap-2 md:gap-4 ml-auto items-center">
               <button
@@ -99,7 +103,7 @@ export default function StoryReader({
             </div>
           </div>
         </header>
-
+      
       <article
         id="story-article"
         className={cn(
@@ -112,9 +116,23 @@ export default function StoryReader({
         <Paragraphs content={displayContent} theme={theme} />
 
         {isRefining && showRefined && (
-          <div id="ai-loading-indicator" className="animate-pulse space-y-4">
-            <div className="h-4 bg-indigo-200/20 rounded w-full"></div>
-            <div className="h-4 bg-indigo-200/20 rounded w-5/6"></div>
+          <div
+            id="ai-loading-indicator"
+            className="flex flex-col items-center justify-center py-8 space-y-3 border-2 border-dashed border-indigo-300/30 rounded-xl bg-indigo-500/5"
+          >
+            <div className="flex items-center gap-2">
+              <svg className="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span className="font-bold text-indigo-500 text-sm">
+                AI đang biên tập
+                <span className="animate-bounce inline-block" style={{ animationDelay: "0s" }}>.</span>
+                <span className="animate-bounce inline-block" style={{ animationDelay: "0.2s" }}>.</span>
+                <span className="animate-bounce inline-block" style={{ animationDelay: "0.4s" }}>.</span>
+              </span>
+            </div>
+            <p className="text-xs text-indigo-400/70">Nội dung bên dưới sẽ được cập nhật dần...</p>
           </div>
         )}
       </article>

@@ -5,13 +5,14 @@
 
 export async function refineStoryContent(
   storyContent: string,
-  onChunk: (text: string) => void
+  onChunk: (text: string) => void,
+  mode: "smooth" | "summarize" = "smooth"
 ): Promise<string> {
   
   const response = await fetch("/api/refine", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content: storyContent }),
+    body: JSON.stringify({ content: storyContent, mode }),
   });
 
   if (!response.ok) {

@@ -23,12 +23,13 @@ export default function App() {
     refinedContent, isRefining, showRefined, setShowRefined,
     error, copied,
     fetchStory, handleManualSubmit, refineWithAI, copyToClipboard,
-    currentStoryInfo, parseReadingInfo, readerScrollRef,
+    currentStoryInfo, readerScrollRef,
     autoRefine, setAutoRefine,
+    aiMode, setAiMode,
     detectedInfo,
   } = useStory();
   const { readingHistoryList, confirmDeleteId, setConfirmDeleteId, view, setView, saveReadingHistory, deleteItem } =
-    useReadingHistory(user?.uid ?? null, parseReadingInfo);
+    useReadingHistory(user?.uid ?? null);
   const { theme, setTheme, fontSize, fontType, setFontType, decreaseFontSize, increaseFontSize, themes } =
     useReaderSettings();
 
@@ -39,13 +40,12 @@ export default function App() {
     }
   }, [story, readerScrollRef]);
 
-  // Save to reading history when story is loaded and user is logged in
+  // Save to reading history only when detectedInfo (from detectChapterInfo) is available
   useEffect(() => {
-    if (story && user) {
-      // Use detectedInfo if available (AI-detected data), pass null initially so it falls back to regex
+    if (story && user && detectedInfo && detectedInfo.storyName) {
       saveReadingHistory(story.title, story.rawUrl || url, detectedInfo);
     }
-  }, [story?.rawUrl, detectedInfo]); // re-save when detectedInfo updates
+  }, [detectedInfo]); // only trigger when detectedInfo updates
 
   const handleHomeClick = () => {
     setStory(null);
@@ -61,11 +61,7 @@ export default function App() {
   };
 
   const handleFetchChapter = (chapterUrl: string) => {
-    fetchStory(chapterUrl).then((data) => {
-      if (data && user) {
-        saveReadingHistory(data.title, chapterUrl);
-      }
-    });
+    fetchStory(chapterUrl);
   };
 
   return (
@@ -105,6 +101,8 @@ export default function App() {
               onCloseSidebar={() => setSidebarOpen(false)}
               autoRefine={autoRefine}
               onAutoRefineChange={setAutoRefine}
+              aiMode={aiMode}
+              onAiModeChange={setAiMode}
           />
         )}
 
@@ -147,21 +145,22 @@ export default function App() {
                   error={error}
                 />
               ) : (
-                <StoryReader
-                  story={story}
-                  theme={theme}
-                  fontType={fontType}
-                  fontSize={fontSize}
-                  themes={themes}
-                  showRefined={showRefined}
-                  refinedContent={refinedContent}
-                  isRefining={isRefining}
-                  copied={copied}
-                  currentStoryInfo={currentStoryInfo}
-                  loading={loading}
-                  onCopy={copyToClipboard}
-                  onFetchChapter={handleFetchChapter}
-                />
+                  <StoryReader
+                    story={story}
+                    theme={theme}
+                    fontType={fontType}
+                    fontSize={fontSize}
+                    themes={themes}
+                    showRefined={showRefined}
+                    refinedContent={refinedContent}
+                    isRefining={isRefining}
+                    copied={copied}
+                    currentStoryInfo={currentStoryInfo}
+                    loading={loading}
+                    onCopy={copyToClipboard}
+                    onFetchChapter={handleFetchChapter}
+                    aiMode={aiMode}
+                  />
               )}
             </div>
           </div>
