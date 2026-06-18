@@ -20,6 +20,7 @@ export function useStory() {
   const [isRefining, setIsRefining] = useState(false);
   const [showRefined, setShowRefined] = useState(false);
   const [autoRefine, setAutoRefine] = useState(false);
+  const [aiMode, setAiMode] = useState<"smooth" | "summarize">("smooth");
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [detectedInfo, setDetectedInfo] = useState<DetectedChapterInfo | null>(null);
@@ -174,14 +175,22 @@ export function useStory() {
     try {
       await refineStoryContent(story.content, (text) => {
         setRefinedContent(text);
-      });
+      }, aiMode);
     } catch (err) {
       console.error("AI Error:", err);
       alert("Lỗi khi xử lý AI. Vui lòng thử lại.");
     } finally {
       setIsRefining(false);
     }
-  }, [story]);
+  }, [story, aiMode]);
+
+  // Clear refined content when AI mode changes so user can re-run with new mode
+  useEffect(() => {
+    if (refinedContent) {
+      setRefinedContent("");
+      setShowRefined(false);
+    }
+  }, [aiMode]);
 
   // Auto-refine when story changes and autoRefine is enabled
   useEffect(() => {
@@ -219,6 +228,8 @@ export function useStory() {
     setShowRefined,
     autoRefine,
     setAutoRefine,
+    aiMode,
+    setAiMode,
     error,
     setError,
     copied,

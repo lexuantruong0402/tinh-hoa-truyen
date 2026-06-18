@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { cn } from "@/src/lib/utils";
-import { BookOpen, Bookmark, Check } from "lucide-react";
+import { BookOpen, Bookmark, Check, ArrowLeft, ArrowRight } from "lucide-react";
 import { Theme, FontType, Story, ParsedReadingInfo } from "@/src/types";
 
 interface StoryReaderProps {
@@ -17,6 +17,7 @@ interface StoryReaderProps {
   loading: boolean;
   onCopy: () => void;
   onFetchChapter: (url: string) => void;
+  aiMode?: "smooth" | "summarize";
 }
 
 /** Memoized paragraph list - only recomputes when content changes */
@@ -35,6 +36,88 @@ function Paragraphs({ content, theme }: { content: string; theme: Theme }) {
   return <>{lines}</>;
 }
 
+function ChapterNav({
+  prevUrl,
+  nextUrl,
+  loading,
+  onFetchChapter,
+  theme,
+}: {
+  prevUrl?: string | null;
+  nextUrl?: string | null;
+  loading: boolean;
+  onFetchChapter: (url: string) => void;
+  theme: Theme;
+}) {
+  return (
+    <div className="flex gap-4 w-full justify-between items-center">
+      {prevUrl ? (
+        <button
+          onClick={() => onFetchChapter(prevUrl!)}
+          disabled={loading}
+          className={cn(
+            "flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200",
+            theme === "dark"
+              ? "text-slate-300 hover:bg-slate-800 hover:text-indigo-400"
+              : theme === "sepia"
+                ? "text-slate-600 hover:bg-amber-100 hover:text-indigo-600"
+                : "text-slate-600 hover:bg-slate-100 hover:text-indigo-600",
+            loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+          )}
+        >
+          <ArrowLeft size={16} />
+          <span>Chương trước</span>
+        </button>
+      ) : (
+        <button
+          disabled
+          className={cn(
+            "flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-sm",
+            theme === "dark"
+              ? "text-slate-700 cursor-not-allowed"
+              : "text-slate-300 cursor-not-allowed",
+          )}
+        >
+          <ArrowLeft size={16} />
+          <span>Chương trước</span>
+        </button>
+      )}
+
+      {nextUrl ? (
+        <button
+          onClick={() => onFetchChapter(nextUrl!)}
+          disabled={loading}
+          className={cn(
+            "flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200",
+            theme === "dark"
+              ? "text-slate-300 hover:bg-slate-800 hover:text-indigo-400"
+              : theme === "sepia"
+                ? "text-slate-600 hover:bg-amber-100 hover:text-indigo-600"
+                : "text-slate-600 hover:bg-slate-100 hover:text-indigo-600",
+            loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+          )}
+        >
+          <span>Chương sau</span>
+          <ArrowRight size={16} />
+        </button>
+      ) : (
+        <button
+          disabled
+          className={cn(
+            "flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-sm",
+            theme === "dark"
+              ? "text-slate-700 cursor-not-allowed"
+              : "text-slate-300 cursor-not-allowed",
+          )}
+        >
+          <span>Chương sau</span>
+          <ArrowRight size={16} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function StoryReader({
   story,
   theme,
@@ -49,6 +132,7 @@ export default function StoryReader({
   loading,
   onCopy,
   onFetchChapter,
+  aiMode,
 }: StoryReaderProps) {
   const displayContent = showRefined ? refinedContent : story.content;
 
@@ -83,7 +167,9 @@ export default function StoryReader({
               <BookOpen size={14} /> AI Biên tập
             </span>
             <span className="flex items-center gap-1 opacity-60">
-              {showRefined ? "Bản mượt mà" : "Bản dịch thô"}
+              {showRefined
+                ? (aiMode === "summarize" ? "Bản tóm tắt" : "Bản mượt mà")
+                : "Bản dịch thô"}
             </span>
             <div className="flex gap-2 md:gap-4 ml-auto items-center">
               <button
@@ -100,6 +186,16 @@ export default function StoryReader({
           </div>
         </header>
 
+      <div className={cn("mb-6 md:mb-8", theme === "sepia" ? "border-amber-200" : theme === "dark" ? "border-slate-800" : "border-slate-200")}>
+        <ChapterNav
+          prevUrl={story.prevUrl}
+          nextUrl={story.nextUrl}
+          loading={loading}
+          onFetchChapter={onFetchChapter}
+          theme={theme}
+        />
+      </div>
+
       <article
         id="story-article"
         className={cn(
@@ -112,9 +208,23 @@ export default function StoryReader({
         <Paragraphs content={displayContent} theme={theme} />
 
         {isRefining && showRefined && (
-          <div id="ai-loading-indicator" className="animate-pulse space-y-4">
-            <div className="h-4 bg-indigo-200/20 rounded w-full"></div>
-            <div className="h-4 bg-indigo-200/20 rounded w-5/6"></div>
+          <div
+            id="ai-loading-indicator"
+            className="flex flex-col items-center justify-center py-8 space-y-3 border-2 border-dashed border-indigo-300/30 rounded-xl bg-indigo-500/5"
+          >
+            <div className="flex items-center gap-2">
+              <svg className="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span className="font-bold text-indigo-500 text-sm">
+                AI đang biên tập
+                <span className="animate-bounce inline-block" style={{ animationDelay: "0s" }}>.</span>
+                <span className="animate-bounce inline-block" style={{ animationDelay: "0.2s" }}>.</span>
+                <span className="animate-bounce inline-block" style={{ animationDelay: "0.4s" }}>.</span>
+              </span>
+            </div>
+            <p className="text-xs text-indigo-400/70">Nội dung bên dưới sẽ được cập nhật dần...</p>
           </div>
         )}
       </article>
@@ -122,53 +232,21 @@ export default function StoryReader({
       <footer
         id="story-footer"
         className={cn(
-          "mt-8 md:mt-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 py-4 md:py-6 border-t font-medium text-xs md:text-sm",
+          "mt-8 md:mt-12 pt-4 md:pt-6 border-t",
           theme === "sepia"
-            ? "border-amber-200 text-slate-500"
+            ? "border-amber-200"
             : theme === "dark"
-              ? "border-slate-800 text-slate-500"
-              : "border-slate-200 text-slate-400",
+              ? "border-slate-800"
+              : "border-slate-200",
         )}
       >
-        <div id="chap-nav" className="flex gap-4 w-full md:w-auto justify-between md:justify-start">
-          {story.prevUrl ? (
-            <button
-              id="prev-chap-btn"
-              onClick={() => onFetchChapter(story.prevUrl!)}
-              disabled={loading}
-              className="hover:text-indigo-600 transition-colors flex items-center gap-1 cursor-pointer font-bold duration-200"
-            >
-              ← Chương trước
-            </button>
-          ) : (
-            <button
-              id="prev-chap-btn"
-              disabled
-              className="text-slate-400/40 dark:text-slate-600 cursor-not-allowed flex items-center gap-1 font-bold"
-            >
-              ← Chương trước
-            </button>
-          )}
-
-          {story.nextUrl ? (
-            <button
-              id="next-chap-btn"
-              onClick={() => onFetchChapter(story.nextUrl!)}
-              disabled={loading}
-              className="hover:text-indigo-600 transition-colors flex items-center gap-1 cursor-pointer font-bold duration-200"
-            >
-              Chương sau →
-            </button>
-          ) : (
-            <button
-              id="next-chap-btn"
-              disabled
-              className="text-slate-400/40 dark:text-slate-600 cursor-not-allowed flex items-center gap-1 font-bold"
-            >
-              Chương sau →
-            </button>
-          )}
-        </div>
+        <ChapterNav
+          prevUrl={story.prevUrl}
+          nextUrl={story.nextUrl}
+          loading={loading}
+          onFetchChapter={onFetchChapter}
+          theme={theme}
+        />
       </footer>
     </div>
   );

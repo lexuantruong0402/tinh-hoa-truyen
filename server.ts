@@ -5,6 +5,9 @@ import { scrapeChapter } from "./src/services/scraper.js";
 import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
 
+// Reuse Gemini client across all requests (avoid re-initialization overhead)
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+
 async function startServer() {
   const app = express();
   const PORT = parseInt(process.env.PORT || "8080", 10);
@@ -13,15 +16,29 @@ async function startServer() {
 
   // API to refine story content with Gemini AI (server-side, API key safe)
   app.post("/api/refine", async (req, res) => {
-    const { content } = req.body;
-  
+    const { content, mode } = req.body;
+
     if (!content || typeof content !== "string") {
       return res.status(400).json({ error: "Content is required" });
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+    const isSummarize = mode === "summarize";
 
-    const prompt = `
+    const summarizePrompt = `
+      Tóm tắt chương truyện sau đây thành một bản ngắn gọn hơn, chỉ khoảng 30-40% độ dài gốc, nhưng vẫn giữ nguyên ý chính và diễn biến của câu chuyện.
+      Mục đích là để người đọc có thể nắm bắt được nội dung chính của chương mà không cần đọc toàn bộ chi tiết. 
+      Hãy tập trung vào việc tóm tắt các bối cảnh, sự kiện quan trọng, tình tiết then chốt, và diễn biến tâm lý của nhân vật.
+      Đưa ra 5-9 ý chính của chương
+      Nội dung chương cần tóm tắt:
+      ${content}
+
+      Yêu cầu BẮT BUỘC:
+      - Chỉ trả về nội dung tóm tắt.
+      - KHÔNG chào hỏi, không giải thích, không thêm phần giới thiệu hay ghi chú.
+      - Sử dụng dấu gạch đầu dòng để liệt kê các ý chính trong phần tóm tắt.
+    `;
+
+    const smoothPrompt = `
       Bạn là một biên tập viên văn học mạng chuyên nghiệp, tinh thông hán việt và văn phong tiên hiệp, kiếm hiệp.
       Dưới đây là một chương truyện đã được dịch thô (convert) từ tiếng Trung sang tiếng Việt. 
       Nhiệm vụ của bạn là biên tập lại toàn bộ nội dung này sang tiếng Việt mượt mà, tự nhiên, thoát ý và thuần Việt hơn, nhưng vẫn giữ được "phong vị" của truyện mạng.
@@ -46,13 +63,15 @@ async function startServer() {
       - Giữ nguyên cấu trúc đoạn văn và phân đoạn ban đầu.
     `;
 
+    const prompt = isSummarize ? summarizePrompt : smoothPrompt;
+
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
     try {
       const response = await ai.models.generateContentStream({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-flash-lite",
         contents: prompt,
       });
 
@@ -105,8 +124,6 @@ async function startServer() {
       return res.status(400).json({ error: "Content is required" });
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
-
     // Use first 2000 chars for analysis (enough to determine story/chapter context)
     const sampleContent = content.substring(0, 2000);
 
@@ -141,7 +158,7 @@ async function startServer() {
 
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-flash-lite",
         contents: prompt,
       });
 

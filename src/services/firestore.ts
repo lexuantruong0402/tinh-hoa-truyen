@@ -65,21 +65,23 @@ export async function saveReadingHistoryRecord(
   storyTitle: string,
   currentUrl: string,
   userId: string,
-  parseReadingInfoFn: (url: string, title: string) => { storyName: string; chapterName: string; sourceHost: string },
   detectedInfo?: { storyName?: string; chapterNumber?: string; chapterName?: string } | null,
 ) {
   if (!storyTitle || !currentUrl) return;
 
-  const parsed = parseReadingInfoFn(currentUrl, storyTitle);
+  // Extract sourceHost directly from URL
+  let sourceHost = "";
+  try {
+    sourceHost = new URL(currentUrl).hostname.replace("www.", "");
+  } catch {
+    sourceHost = "Trực tiếp";
+  }
 
-  // Prefer AI-detected info over regex-parsed info
+  // Use AI-detected info (detectChapterInfo) exclusively for story/chapter data
   const storyName = (detectedInfo?.storyName && detectedInfo.storyName !== "Không rõ")
     ? detectedInfo.storyName
-    : parsed.storyName;
-  const sourceHost = parsed.sourceHost;
-
-  // Build chapterName: prefer detected format "Chương X - Tên chương" if available
-  let chapterName = parsed.chapterName;
+    : storyTitle;
+  let chapterName = storyTitle;
   if (detectedInfo?.chapterNumber || detectedInfo?.chapterName) {
     const parts: string[] = [];
     if (detectedInfo.chapterNumber) {

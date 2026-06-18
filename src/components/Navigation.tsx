@@ -1,5 +1,5 @@
 import { cn } from "@/src/lib/utils";
-import { LogIn, LogOut, Settings, Menu, X } from "lucide-react";
+import { LogIn, LogOut, Settings, X } from "lucide-react";
 import { useAuth } from "@/src/hooks/useAuth";
 
 interface NavigationProps {
@@ -37,7 +37,7 @@ export default function Navigation({
             className="md:hidden p-2 text-slate-400 hover:text-white transition-colors"
             aria-label="Toggle sidebar"
           >
-            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          {sidebarOpen ? <X size={20} /> : <Settings size={20} />}
           </button>
         )}
         <div id="nav-brand" className="flex items-center gap-2 cursor-pointer" onClick={onHomeClick}>

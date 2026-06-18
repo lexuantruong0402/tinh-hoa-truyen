@@ -31,6 +31,8 @@ interface StorySidebarProps {
   onCloseSidebar?: () => void;
   autoRefine?: boolean;
   onAutoRefineChange?: (value: boolean) => void;
+  aiMode?: "smooth" | "summarize";
+  onAiModeChange?: (mode: "smooth" | "summarize") => void;
 }
 
 export default function StorySidebar({
@@ -53,6 +55,8 @@ export default function StorySidebar({
   onCloseSidebar,
   autoRefine,
   onAutoRefineChange,
+  aiMode,
+  onAiModeChange,
 }: StorySidebarProps) {
   const sidebarContent = (
     <div className="flex flex-col gap-6 h-full">
@@ -90,15 +94,33 @@ export default function StorySidebar({
         </button>
       </div>
 
-      <div id="sidebar-ai-config" className="space-y-4">
+        <div id="sidebar-ai-config" className="space-y-4">
         <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Cấu hình AI</label>
         <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-          <div className="flex justify-between items-center mb-1">
+          <div className="flex justify-between items-center mb-3">
             <span className="text-sm">Chế độ biên tập</span>
-            <span className="text-xs text-indigo-400">Mượt mà</span>
           </div>
-          <div className="w-full bg-slate-700 h-1 rounded-full overflow-hidden">
-            <div className="bg-indigo-500 h-full w-full"></div>
+          <div className="flex rounded-lg bg-slate-700 p-0.5">
+            <button
+              onClick={() => onAiModeChange?.("smooth")}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
+                aiMode === "smooth"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Mượt mà
+            </button>
+            <button
+              onClick={() => onAiModeChange?.("summarize")}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
+                aiMode === "summarize"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Tóm tắt
+            </button>
           </div>
         </div>
 
